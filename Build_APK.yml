@@ -1,0 +1,49 @@
+name: Build APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Extract app project
+        run: |
+          mkdir -p _app
+          unzip -q FlightStatusBar_Naver_GitHub.zip -d _app
+          echo "Extracted project:"
+          find _app -maxdepth 3 -type f | sort | head -80
+
+      - name: Build debug APK
+        working-directory: _app
+        run: gradle :app:assembleDebug --stacktrace
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: FlightStatusBar-debug-apk
+          path: _app/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
